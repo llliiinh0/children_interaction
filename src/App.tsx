@@ -24,6 +24,7 @@ function App() {
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [currentDrawingData, setCurrentDrawingData] = useState<string | null>(null);
   const [currentVideoUrl, setCurrentVideoUrl] = useState<string | null>(null);
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
 
   // --- Handle drawing completion ---
   const handleDrawingComplete = useCallback(async (canvasData: string) => {
@@ -100,6 +101,7 @@ function App() {
     setIsGeneratingVideo(true);
     setVideoStatus("Starting AI video engine...");
     setCurrentVideoUrl(null); // Clear old video
+    setIsVideoModalOpen(true); // Open modal immediately
 
     try {
       // This await will continue until polling inside VideoService ends
@@ -171,32 +173,6 @@ function App() {
               onGenerateVideo={handleGenerateVideo}
               isGenerating={isGeneratingVideo}
             />
-            
-            {/* Video display area */}
-            {(isGeneratingVideo || currentVideoUrl) && (
-              <div className="video-display-container" style={{ marginTop: '20px', padding: '15px', background: '#f0f4f8', borderRadius: '12px' }}>
-                {isGeneratingVideo ? (
-                  <div className="video-loader" style={{ textAlign: 'center' }}>
-                    <div className="spinner"></div>
-                    <p style={{ color: '#666', fontWeight: 'bold' }}>{videoStatus}</p>
-                    <progress style={{ width: '100%' }}></progress>
-                  </div>
-                ) : (
-                  <div className="video-player">
-                    <h4 style={{ marginBottom: '10px' }}>🎬 Generated Animation Video:</h4>
-                    <video 
-                      src={currentVideoUrl!} 
-                      controls 
-                      autoPlay 
-                      style={{ width: '100%', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                    />
-                    <div style={{ marginTop: '10px', textAlign: 'right' }}>
-                      <a href={currentVideoUrl!} download="story.mp4" className="download-link">Download Video</a>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
 
           <div className="chat-section">
@@ -208,6 +184,48 @@ function App() {
           </div>
         </div>
       </main>
+
+      {/* Video modal */}
+      {isVideoModalOpen && (
+        <div className="video-modal-backdrop">
+          <div className="video-modal">
+            <button
+              className="video-modal-close"
+              onClick={() => setIsVideoModalOpen(false)}
+              aria-label="Close video"
+            >
+              ✕
+            </button>
+
+            {isGeneratingVideo ? (
+              <div className="video-modal-content loading">
+                <div className="spinner"></div>
+                <p className="video-status-text">{videoStatus}</p>
+                <progress className="video-progress"></progress>
+              </div>
+            ) : currentVideoUrl ? (
+              <div className="video-modal-content">
+                <h4 className="video-modal-title">🎬 Generated Animation Video</h4>
+                <video
+                  src={currentVideoUrl}
+                  controls
+                  autoPlay
+                  className="video-modal-player"
+                />
+                <div className="video-modal-actions">
+                  <a href={currentVideoUrl} download="story.mp4" className="download-link">
+                    Download Video
+                  </a>
+                </div>
+              </div>
+            ) : (
+              <div className="video-modal-content">
+                <p className="video-status-text">No video available.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
