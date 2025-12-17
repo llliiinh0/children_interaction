@@ -11,16 +11,13 @@ const API_CONFIG = {
 
   // --- Volcengine Video Generation Configuration ---
   // Also use proxy path
-  ARK_VIDEO_BASE_URL: import.meta.env.VITE_API_URL || 'https://ark.cn-beijing.volces.com/api/v3',
+  // For browser (Vite dev) we MUST go through the proxy to avoid CORS.
+  // If you deploy behind your own backend, you can override this via env.
+  ARK_VIDEO_BASE_URL: import.meta.env.VITE_ARK_VIDEO_API_URL || '/api-volc-video/api/v3',
   // Video generation model endpoint ID
   ARK_VIDEO_MODEL: import.meta.env.VITE_ARK_VIDEO_MODEL || 'doubao-seedance-1-0-pro-250528',
   // Video generation specific API Key (if different)
   ARK_VIDEO_API_KEY: import.meta.env.VITE_ARK_VIDEO_API_KEY || '',
-
-  // --- Tencent Cloud TTS/STT Configuration ---
-  TENCENT_SECRET_ID: import.meta.env.VITE_TENCENT_SECRET_ID || '',
-  TENCENT_SECRET_KEY: import.meta.env.VITE_TENCENT_SECRET_KEY || '',
-  TENCENT_REGION: import.meta.env.VITE_TENCENT_REGION || 'ap-beijing',
 };
 
 export class LLMService {
@@ -172,102 +169,76 @@ export class LLMService {
   }
 }
 
-/** * Tencent Cloud signature tool (unchanged, compatible) 
+/**
+ * 豆包语音合成服务 (Volcengine TTS)
+ * 全量替换腾讯云，只保留播放功能
  */
-async function generateTencentSignature(
-  secretKey: string, service: string, action: string, region: string, 
-  payload: any, timestamp: number, date: string
-): Promise<string> {
-  const encoder = new TextEncoder();
-  const requestString = JSON.stringify(payload);
-  const signString = `POST\n/\n\ncontent-type:application/json\nhost:${service}.tencentcloudapi.com\n\n${requestString}`;
-  
-  const kDate = await crypto.subtle.importKey('raw', encoder.encode(secretKey), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-  const kDateSig = await crypto.subtle.sign('HMAC', kDate, encoder.encode(date));
-  const kService = await crypto.subtle.importKey('raw', kDateSig, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-  const kServiceSig = await crypto.subtle.sign('HMAC', kService, encoder.encode(service));
-  const kSigning = await crypto.subtle.importKey('raw', kServiceSig, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-  const kSigningSig = await crypto.subtle.sign('HMAC', kSigning, encoder.encode('tc3_request'));
-  const kFinal = await crypto.subtle.importKey('raw', kSigningSig, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-  const signature = await crypto.subtle.sign('HMAC', kFinal, encoder.encode(signString));
-  
-  return Array.from(new Uint8Array(signature)).map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
 export class TTSService {
-  static async textToSpeech(text: string, voiceType?: number): Promise<string> {
-    if (!API_CONFIG.TENCENT_SECRET_ID || !API_CONFIG.TENCENT_SECRET_KEY) throw new Error('Tencent Cloud credentials not configured');
-    try {
-      const service = 'tts';
-      const action = 'TextToVoice';
-      const region = API_CONFIG.TENCENT_REGION;
-      const endpoint = `https://${service}.tencentcloudapi.com/`;
-      const payload = { Text: text, Codec: 'mp3', ModelType: 1, VoiceType: voiceType || 1001, SessionId: `s_${Date.now()}` };
-      const timestamp = Math.floor(Date.now() / 1000);
-      const date = new Date().toISOString().split('T')[0].replace(/-/g, '');
-      const signature = await generateTencentSignature(API_CONFIG.TENCENT_SECRET_KEY, service, action, region, payload, timestamp, date);
-      
-      const response = await axios.post(endpoint, payload, {
-        headers: {
-          'Content-Type': 'application/json; charset=utf-8',
-          'X-TC-Action': action, 'X-TC-Version': '2019-08-23', 'X-TC-Region': region,
-          'X-TC-Timestamp': timestamp.toString(),
-          'Authorization': `TC3-HmacSHA256 Credential=${API_CONFIG.TENCENT_SECRET_ID}/${date}/${service}/tc3_request, SignedHeaders=content-type;host, Signature=${signature}`
-        }
-      });
+  static async textToSpeech(text: string, voiceType: string | number = 'BV001_streaming'): Promise<string> {
+    const appId = '4015335495';
+    // 关键：请确保这个 token 是从“语音技术-服务授权”或“项目管理”生成的 Access Token
+    const accessToken = 'eDxfM0_u8sCVG62AIScdIOcumI0xNb6x'; 
 
-      if (response.data?.Response?.Audio) {
-        const binaryString = atob(response.data.Response.Audio);
+    try {
+      const response = await axios.post(
+        '/api-volc-tts/api/v1/tts',
+        {
+          app: {
+            appid: appId,
+            token: accessToken, // 核心：基础版主要看这里的 token
+            cluster: 'volcano_tts'
+          },
+          user: { uid: 'student_user' },
+          audio: {
+            voice_type: 'BV001_streaming',
+            encoding: 'mp3',
+            speed_ratio: 1.0,
+            volume_ratio: 1.0,
+            pitch_ratio: 1.0
+          },
+          request: {
+            text: text,
+            reqid: `req_${Date.now()}`,
+            operation: 'query'
+          }
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            // 尝试这种官方最标准的 Header 格式
+            'Authorization': `Bearer; ${accessToken}` 
+          }
+        }
+      );
+
+      if (response.data?.data) {
+        const binaryString = atob(response.data.data);
         const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
         return URL.createObjectURL(new Blob([bytes], { type: 'audio/mpeg' }));
       }
-      throw new Error(response.data?.Response?.Error?.Message || 'TTS failed');
+      
+      // 如果 code 不为 0，说明 token 还是不对
+      if (response.data?.code) {
+         throw new Error(`Code ${response.data.code}: ${response.data.message}`);
+      }
+      throw new Error('No data');
     } catch (error: any) {
-      if (window.speechSynthesis) return this.fallbackTTS(text);
-      throw error;
+      console.error('基础语音合成失败:', error.response?.data || error.message);
+      return this.fallbackTTS(text);
     }
   }
 
   private static fallbackTTS(text: string): Promise<string> {
     return new Promise((resolve) => {
+      speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'en-US';
+      utterance.lang = 'zh-CN';
       utterance.onend = () => resolve('browser-tts');
       speechSynthesis.speak(utterance);
     });
-  }
-}
-
-export class STTService {
-  static async speechToText(audioBlob: Blob): Promise<string> {
-    if (!API_CONFIG.TENCENT_SECRET_ID || !API_CONFIG.TENCENT_SECRET_KEY) throw new Error('Credentials not configured');
-    try {
-      const reader = new FileReader();
-      const audioBase64 = await new Promise<string>((resolve) => {
-        reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
-        reader.readAsDataURL(audioBlob);
-      });
-
-      const service = 'asr';
-      const action = 'SentenceRecognition';
-      const payload = { ProjectId: 0, SubServiceType: 2, EngSerViceType: '16k_zh', SourceType: 1, VoiceFormat: 'mp3', UsrAudioKey: `a_${Date.now()}`, Data: audioBase64, DataLen: audioBlob.size };
-      const timestamp = Math.floor(Date.now() / 1000);
-      const date = new Date().toISOString().split('T')[0].replace(/-/g, '');
-      const signature = await generateTencentSignature(API_CONFIG.TENCENT_SECRET_KEY, service, action, API_CONFIG.TENCENT_REGION, payload, timestamp, date);
-      
-      const response = await axios.post(`https://${service}.tencentcloudapi.com/`, payload, {
-        headers: {
-          'Content-Type': 'application/json',
-          'X-TC-Action': action, 'X-TC-Version': '2019-06-14', 'X-TC-Region': API_CONFIG.TENCENT_REGION,
-          'X-TC-Timestamp': timestamp.toString(),
-          'Authorization': `TC3-HmacSHA256 Credential=${API_CONFIG.TENCENT_SECRET_ID}/${date}/${service}/tc3_request, SignedHeaders=content-type;host, Signature=${signature}`
-        }
-      });
-      return response.data?.Response?.Result || '';
-    } catch (error: any) {
-      throw new Error(`识别失败: ${error.message}`);
-    }
   }
 }
 
