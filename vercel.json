@@ -7,6 +7,14 @@
   "framework": "vite",
   "rewrites": [
     {
+      "source": "/api-volc-tts/:path*",
+      "destination": "https://openspeech.bytedance.com/:path*"
+    },
+    {
+      "source": "/api-volc-video/:path*",
+      "destination": "https://ark.cn-beijing.volces.com/:path*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
@@ -23,4 +31,3 @@
     }
   ]
 }
-
