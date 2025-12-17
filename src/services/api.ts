@@ -4,14 +4,14 @@ import axios from 'axios';
 const API_CONFIG = {
   // --- Volcengine Doubao Language Model Configuration ---
   // Use Vite proxy path to solve browser CORS issues
-  ARK_BASE_URL: '/api-ark/api/v3',
+  ARK_BASE_URL: import.meta.env.VITE_API_URL || 'https://ark.cn-beijing.volces.com/api/v3',
   // Must be the endpoint ID generated from console (ep-xxx)
   ARK_MODEL: import.meta.env.VITE_ARK_MODEL || '', 
   ARK_API_KEY: import.meta.env.VITE_ARK_API_KEY || '',
 
   // --- Volcengine Video Generation Configuration ---
   // Also use proxy path
-  ARK_VIDEO_BASE_URL: '/api-ark/api/v3',
+  ARK_VIDEO_BASE_URL: import.meta.env.VITE_API_URL || 'https://ark.cn-beijing.volces.com/api/v3',
   // Video generation model endpoint ID
   ARK_VIDEO_MODEL: import.meta.env.VITE_ARK_VIDEO_MODEL || 'doubao-seedance-1-0-pro-250528',
   // Video generation specific API Key (if different)
