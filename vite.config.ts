@@ -35,6 +35,11 @@ export default defineConfig({
         // 将 /api-ark 替换为空，这样请求 /api-ark/api/v3 就会变成 https://ark.cn-beijing.volces.com/api/v3
         rewrite: (path) => path.replace(/^\/api-ark/, ''),
       },
+      '/api-volc-tts': {
+        target: 'https://openspeech.bytedance.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api-volc-tts/, '')
+      },
     },
   },
 })
