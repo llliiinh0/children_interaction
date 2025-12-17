@@ -40,6 +40,11 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api-volc-tts/, '')
       },
+      '/api-volc-video': {
+      target: 'https://ark.cn-beijing.volces.com',
+      changeOrigin: true,
+      rewrite: (path) => path.replace(/^\/api-volc-video/, '')
+    }
     },
   },
 })
