@@ -73,8 +73,7 @@ function App() {
       const updatedStoryContent = await LLMService.updateStoryFromDrawing(
         canvasData,
         currentDrawingData,
-        story.content,
-        messages.filter(m => m.role !== 'system').map(m => ({ role: m.role, content: m.content }))
+        story.content
       );
 
       setStory({ content: updatedStoryContent, lastModified: new Date() });
