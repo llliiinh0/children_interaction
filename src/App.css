@@ -95,6 +95,18 @@
   overflow: hidden;
 }
 
+/* Desktop: make main content fill the viewport height */
+@media (min-width: 900px) {
+  .app-main {
+    height: calc(100vh - 64px); /* 64px ≈ header height */
+  }
+
+  .left-panel,
+  .right-panel {
+    height: 100%;
+  }
+}
+
 .story-section {
   flex: 1.1;
   min-height: 0;
