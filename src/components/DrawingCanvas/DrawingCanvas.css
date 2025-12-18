@@ -29,7 +29,7 @@
   flex: 1;
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: stretch; /* 让内部 canvas 高度跟随容器 */
   border: 1px solid #e0f6e0;
   border-radius: 6px;
   background: #fafafa;
@@ -41,6 +41,9 @@
 }
 
 .drawing-canvas {
+  flex: 1;               /* 占满可用空间 */
+  width: 100%;
+  height: 100%;
   border-radius: 4px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   /* 再次确保画布本身不会触发滚动手势 */
