@@ -22,30 +22,38 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   useEffect(() => {
     if (!canvasRef.current) return;
 
-    const BASE_WIDTH = 800;
-    const BASE_HEIGHT = 600;
+    const BASE_ASPECT = 4 / 3; // width:height = 4:3
 
     const initCanvas = () => {
       const existing = fabricCanvasRef.current;
       const canvasElement = canvasRef.current!;
       const parent = canvasElement.parentElement;
 
-      const parentWidth = parent ? parent.clientWidth - 16 : BASE_WIDTH;
-      const parentHeight = parent ? parent.clientHeight - 16 : BASE_HEIGHT;
-      const maxWidth = BASE_WIDTH;
+      const parentWidth = parent ? parent.clientWidth - 12 : 800;
+      const parentHeight = parent ? parent.clientHeight - 12 : 600;
+
+      // Try to make the drawable area fill as much of the wrapper as possible,
+      // while keeping a 4:3 aspect ratio and never exceeding parent size.
+      let targetWidth = parentWidth;
+      let targetHeight = targetWidth / BASE_ASPECT;
+
+      if (targetHeight > parentHeight) {
+        targetHeight = parentHeight;
+        targetWidth = targetHeight * BASE_ASPECT;
+      }
+
       const minWidth = 260;
-      const targetWidth = Math.min(maxWidth, Math.max(minWidth, parentWidth));
-      const scaleW = targetWidth / BASE_WIDTH;
-      const scaleH = parentHeight > 0 ? parentHeight / BASE_HEIGHT : scaleW;
-      const scale = Math.min(scaleW, scaleH);
-      const targetHeight = BASE_HEIGHT * scale;
+      if (targetWidth < minWidth) {
+        targetWidth = minWidth;
+        targetHeight = targetWidth / BASE_ASPECT;
+      }
 
       let canvas: fabric.Canvas;
       if (existing) {
         canvas = existing;
         canvas.setWidth(targetWidth);
         canvas.setHeight(targetHeight);
-        canvas.setZoom(scale);
+        canvas.setZoom(1);
         canvas.renderAll();
       } else {
         canvas = new fabric.Canvas(canvasElement, {
