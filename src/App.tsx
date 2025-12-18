@@ -147,14 +147,6 @@ function App() {
   return (
     <div className="app">
       {import.meta.env.DEV && <EnvChecker />}
-      <header className="app-header">
-        <div className="header-left">
-          <span className="logo">Gemini</span>
-          <h1>Magic Story Canvas</h1>
-          <span className="star-icon">⭐</span>
-        </div>
-      </header>
-
       <main className="app-main">
         <div className="left-panel">
           <DrawingCanvas 
