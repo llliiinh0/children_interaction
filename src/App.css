@@ -1,16 +1,16 @@
-/* 1. 基础容器：确保占据整个屏幕高度 */
+/* 1. 基础容器 */
 .app {
   width: 100%;
-  height: 100vh; /* 关键：固定为视口高度 */
+  height: 100vh;
   display: flex;
   flex-direction: column;
   background: #f5f5f5;
-  overflow: hidden; /* 防止出现双滚动条 */
+  overflow: hidden; /* PC端固定高度，不让整体滚动 */
 }
 
-/* 2. 头部：保持固定 */
+/* 2. 头部 */
 .app-header {
-  flex-shrink: 0; /* 防止头部被压缩 */
+  flex-shrink: 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -18,52 +18,62 @@
   height: 60px;
   background: white;
   border-bottom: 2px solid #e0e0e0;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   z-index: 10;
 }
 
-/* 3. 主体内容区：左右布局 */
+/* 3. 主体内容区 */
 .app-main {
-  flex: 1; /* 占据剩余所有空间 */
+  flex: 1;
   display: flex;
   gap: 20px;
   padding: 20px;
-  overflow: hidden; /* 内容区内部滚动 */
+  overflow: hidden;
 }
 
-/* 4. 左侧面板：绘图区容器 */
+/* 4. 左侧绘图面板 */
 .left-panel {
-  flex: 1; /* 自动撑开 */
+  flex: 1;
   display: flex;
   flex-direction: column;
   background: white;
   border-radius: 16px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
-  position: relative;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.06);
   overflow: hidden;
 }
 
-/* 绘图区内部：让 Canvas 居中并尽可能大 */
+/* 关键：给 Canvas 的父容器 */
 .canvas-container {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   background: #fafafa;
-  padding: 20px;
+  position: relative; /* 方便JS获取偏移量 */
+  touch-action: none; /* 必须：防止手机浏览器拦截触摸事件 */
 }
 
+/* 绘图 Canvas */
 canvas {
-  max-width: 100%;
-  max-height: 100%;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   background: white;
-  /* 建议在 JS 中动态设置 canvas 的 width 和 height */
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  cursor: crosshair;
+  display: block;
+  /* 注意：不要在CSS里写死 width/height，交给JS动态设置 */
 }
 
-/* 5. 右侧面板：固定宽度，上下堆叠 */
+/* 工具栏（颜色/画笔大小）容器 */
+.canvas-toolbar {
+  padding: 15px;
+  background: white;
+  border-top: 1px solid #eee;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+/* 5. 右侧面板 */
 .right-panel {
-  width: 400px; /* 稍微缩小一点，给左侧更多空间 */
+  width: 400px;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -73,38 +83,20 @@ canvas {
 .story-section, .chat-section {
   background: white;
   border-radius: 16px;
-  overflow: hidden;
   display: flex;
   flex-direction: column;
   border: 1px solid #eee;
+  overflow: hidden;
 }
 
-.story-section { flex: 1.2; } /* 故事区域稍大 */
+.story-section { flex: 1.2; }
 .chat-section { flex: 1; }
 
-/* 6. 响应式适配：针对手机和窄屏 */
+/* 6. 响应式：手机端 */
 @media (max-width: 900px) {
-  .app {
-    height: auto; /* 手机端允许滚动 */
-    overflow: auto;
-  }
-
-  .app-main {
-    flex-direction: column; /* 变成上下结构 */
-    padding: 10px;
-    height: auto;
-  }
-
-  .right-panel {
-    width: 100%; /* 手机端右侧面板铺满宽度 */
-  }
-
-  .left-panel {
-    height: 60vh; /* 手机端给画布留出足够高度 */
-    min-height: 400px;
-  }
-  
-  .story-section, .chat-section {
-    height: 400px; /* 手机端给固定高度防止太挤 */
-  }
+  .app { height: auto; overflow: auto; }
+  .app-main { flex-direction: column; padding: 10px; height: auto; }
+  .right-panel { width: 100%; }
+  .left-panel { height: 70vh; min-height: 450px; }
+  .story-section, .chat-section { height: 400px; }
 }
