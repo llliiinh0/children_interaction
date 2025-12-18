@@ -31,11 +31,18 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // 固定一个稳定尺寸，优先保证能画
-    canvas.width = 800;
-    canvas.height = 500;
+    // 根据实际渲染尺寸自适应画布大小，避免手机端坐标错位
+    const rect = canvas.getBoundingClientRect();
+    const width = rect.width || 800;
+    const height = rect.height || 500;
+    const dpr = window.devicePixelRatio || 1;
+
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+    ctx.scale(dpr, dpr); // 逻辑坐标仍然按 CSS 像素计算
+
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, width, height);
 
     const getPos = (e: PointerEvent) => {
       const rect = canvas.getBoundingClientRect();
