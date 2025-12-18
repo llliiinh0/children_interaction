@@ -96,6 +96,20 @@
   overflow: hidden;
 }
 
+/* Mobile / tablet landscape: keep layout fixed to viewport height,
+   let only inner panels scroll to avoid stretching the whole page */
+@media (max-width: 900px) {
+  .app-main {
+    height: calc(100vh - 56px);
+    overflow: hidden;
+  }
+
+  .left-panel,
+  .right-panel {
+    height: 100%;
+  }
+}
+
 .story-section {
   flex: 1.1;
   min-height: 0;
