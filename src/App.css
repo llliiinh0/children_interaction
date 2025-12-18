@@ -267,8 +267,8 @@
   .story-section,
   .chat-section {
     flex: none;
-    min-height: 260px;
-    max-height: 50vh;
+    min-height: auto;
+    max-height: none;
   }
 }
 
