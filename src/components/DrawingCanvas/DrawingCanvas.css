@@ -33,9 +33,9 @@
   border: 1px solid #e0f6e0;
   border-radius: 6px;
   background: #fafafa;
-  padding: 8px;
+  padding: 4px;
   margin-bottom: 10px;
-  min-height: 360px;
+  min-height: 0;
 }
 
 .drawing-canvas {
