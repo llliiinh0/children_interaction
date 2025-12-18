@@ -22,21 +22,56 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   useEffect(() => {
     if (!canvasRef.current) return;
 
-    const canvas = new fabric.Canvas(canvasRef.current, {
-      width: 800,
-      height: 600,
-      backgroundColor: '#ffffff',
-      isDrawingMode: true,
-    });
+    const BASE_WIDTH = 800;
+    const BASE_HEIGHT = 600;
 
-    // Set up brush
-    canvas.freeDrawingBrush.color = selectedColor;
-    canvas.freeDrawingBrush.width = brushSize;
+    const initCanvas = () => {
+      const existing = fabricCanvasRef.current;
+      const canvasElement = canvasRef.current!;
+      const parent = canvasElement.parentElement;
 
-    fabricCanvasRef.current = canvas;
+      const parentWidth = parent ? parent.clientWidth - 16 : BASE_WIDTH;
+      const maxWidth = BASE_WIDTH;
+      const minWidth = 260;
+      const targetWidth = Math.min(maxWidth, Math.max(minWidth, parentWidth));
+      const scale = targetWidth / BASE_WIDTH;
+      const targetHeight = BASE_HEIGHT * scale;
+
+      let canvas: fabric.Canvas;
+      if (existing) {
+        canvas = existing;
+        canvas.setWidth(targetWidth);
+        canvas.setHeight(targetHeight);
+        canvas.setZoom(scale);
+        canvas.renderAll();
+      } else {
+        canvas = new fabric.Canvas(canvasElement, {
+          width: targetWidth,
+          height: targetHeight,
+          backgroundColor: '#ffffff',
+          isDrawingMode: true,
+        });
+        fabricCanvasRef.current = canvas;
+
+        // Initial brush setup
+        canvas.freeDrawingBrush.color = selectedColor;
+        canvas.freeDrawingBrush.width = brushSize;
+      }
+    };
+
+    initCanvas();
+
+    const handleResize = () => {
+      initCanvas();
+    };
+    window.addEventListener('resize', handleResize);
 
     return () => {
-      canvas.dispose();
+      window.removeEventListener('resize', handleResize);
+      if (fabricCanvasRef.current) {
+        fabricCanvasRef.current.dispose();
+        fabricCanvasRef.current = null;
+      }
     };
   }, []);
 
