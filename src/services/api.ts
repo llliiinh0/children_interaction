@@ -189,6 +189,10 @@ export class TTSService {
     const accessToken = 'eDxfM0_u8sCVG62AIScdIOcumI0xNb6x'; 
 
     try {
+      // 火山基础版 TTS 对文本长度有限制，这里做一次截断防止 3010 错误（exceed max len limit）
+      const maxLen = 400; // 可以根据实际文档调整
+      const safeText = text.length > maxLen ? text.slice(0, maxLen) : text;
+
       const response = await axios.post(
         '/api-volc-tts/api/v1/tts',
         {
@@ -206,7 +210,7 @@ export class TTSService {
             pitch_ratio: 1.0
           },
           request: {
-            text: text,
+            text: safeText,
             reqid: `req_${Date.now()}`,
             operation: 'query'
           }
