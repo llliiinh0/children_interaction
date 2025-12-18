@@ -55,7 +55,10 @@ export class LLMService {
       const messages: any[] = [
         { 
           role: 'system', 
-          content: 'You are a creative story writing assistant for children. Always respond with ONLY the story text, without any explanation or comments.' 
+          content:
+            'You are a creative story writing assistant for children. ' +
+            'Always respond in English only. ' +
+            'Always respond with ONLY the story text, without any explanation or comments.'
         }
       ];
 
@@ -91,20 +94,74 @@ export class LLMService {
   static async chat(
     message: string,
     chatHistory: Array<{ role: string; content: string }>,
-    currentStory?: string
+    currentStory?: string,
+    currentImageBase64?: string,
+    options?: { isDrawingCompleted?: boolean }
   ): Promise<string> {
     if (!API_CONFIG.ARK_API_KEY) throw new Error('VITE_ARK_API_KEY not configured');
 
     try {
+      const isDrawingCompleted = options?.isDrawingCompleted ?? false;
+
+      const baseSystemPrompt =
+        'You are StoryBuddy, a warm and imaginative story mentor for children. ' +
+        'Always respond in English only, even if the child uses another language. ' +
+        'You always talk in a gentle, encouraging tone, like a storyteller talking to a child. ' +
+        'Use short, simple sentences and ask open-ended guiding questions (not yes/no), ' +
+        'such as asking about character names, feelings, motivations, and what might happen next.';
+
+      const contextPrompt = [
+        currentStory
+          ? `Here is the current story created together with the child:\n${currentStory}`
+          : 'There is no full story yet. The child is still exploring with their drawing and ideas.',
+        currentImageBase64
+          ? 'You can also see the child’s current drawing. Focus your questions on details in the picture (characters, objects, colors, actions, background, emotions).'
+          : 'You cannot see a drawing image right now, so base your questions on the conversation only.'
+      ].join('\n\n');
+
+      const completionExtraPrompt = isDrawingCompleted
+        ? 'The child has just told you they have FINISHED their drawing. ' +
+          'Now you should: (1) briefly celebrate their effort in one short sentence, ' +
+          '(2) then ask 2–3 gentle, imaginative questions that help them expand the story behind this finished drawing. ' +
+          'Do not ask about drawing again; focus on the story, characters, feelings and “what happens next”.'
+        : 'The child is still in the process of drawing or imagining. ' +
+          'Ask 1–2 friendly questions that help them add more details or new ideas to their drawing and story.';
+
       const messages: any[] = [
         { 
           role: 'system', 
-          content: `You are StoryBuddy, a friendly story writing assistant. Current story: ${currentStory || 'None'}. Please guide the user to provide more interesting plots or characters.` 
+          content: `${baseSystemPrompt}\n\n${contextPrompt}\n\n${completionExtraPrompt}`
         }
       ];
 
       chatHistory.forEach(msg => messages.push({ role: msg.role, content: msg.content }));
-      messages.push({ role: 'user', content: message });
+
+      // The latest user turn: attach drawing image if available so the model can "see" it
+      if (currentImageBase64) {
+        messages.push({
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text:
+                `The child says: "${message}".\n` +
+                'Please respond directly to the child in a friendly, conversational way. ' +
+                'Remember to ask guiding questions about the drawing and story, not about the technical process.'
+            },
+            {
+              type: 'image_url',
+              image_url: { url: `data:image/png;base64,${currentImageBase64}` }
+            }
+          ]
+        });
+      } else {
+        messages.push({
+          role: 'user',
+          content:
+            `The child says: "${message}".\n` +
+            'Please respond directly to the child in a friendly, conversational way and ask guiding, open-ended questions.'
+        });
+      }
 
       const response = await this.postToArk(messages);
       return response.data?.choices?.[0]?.message?.content || '';
@@ -125,7 +182,10 @@ export class LLMService {
       const messages = [
         { 
           role: 'system', 
-          content: 'You are a story update assistant. Compare the changes between the two drawings and update the story accordingly. Only return the updated story text, without describing the changes.' 
+          content:
+            'You are a story update assistant. Always respond in English only. ' +
+            'Compare the changes between the two drawings and update the story accordingly. ' +
+            'Only return the updated story text, without describing the changes.'
         },
         {
           role: 'user',
@@ -155,7 +215,10 @@ export class LLMService {
       const messages: any[] = [
         { 
           role: 'system', 
-          content: 'Update the existing story based on new ideas mentioned in the conversation. Only output the updated story text, without any explanation.' 
+          content:
+            'Update the existing story based on new ideas mentioned in the conversation. ' +
+            'Always respond in English only. ' +
+            'Only output the updated story text, without any explanation.'
         },
         { 
           role: 'user', 
@@ -174,6 +237,48 @@ export class LLMService {
       return response.data?.choices?.[0]?.message?.content || '';
     } catch (error: any) {
       throw new Error(`Failed to sync conversation to story: ${error.message}`);
+    }
+  }
+
+  /**
+   * Generate guiding, creativity-boosting questions for the child
+   * based on the current drawing and (optionally) the current story.
+   */
+  static async generateGuidingQuestions(
+    imageBase64: string,
+    currentStory?: string
+  ): Promise<string> {
+    if (!API_CONFIG.ARK_API_KEY) throw new Error('VITE_ARK_API_KEY not configured');
+
+    try {
+      const messages: any[] = [
+        {
+          role: 'system',
+          content:
+            'You are StoryBuddy, a warm and imaginative mentor for children. ' +
+            'Always respond in English only. ' +
+            'Your task is to ask 1–2 VERY SHORT, open-ended questions to spark the child’s creativity. ' +
+            'Focus on the characters, objects, colors, emotions, and what might happen next in the story behind the drawing. ' +
+            'Do not give a full story, only ask questions. Do not use bullet points or numbering, just write them as one or two separate short sentences.'
+        }
+      ];
+
+      const baseText = currentStory
+        ? `Here is the current story that has just been generated from the child’s drawing:\n${currentStory}\n\nPlease now ask the child some creative questions about this drawing and story.`
+        : 'A child has just created or updated a drawing. Please ask the child some creative questions about this drawing to help them imagine a story.';
+
+      messages.push({
+        role: 'user',
+        content: [
+          { type: 'text', text: baseText },
+          { type: 'image_url', image_url: { url: `data:image/png;base64,${imageBase64}` } }
+        ]
+      });
+
+      const response = await this.postToArk(messages);
+      return response.data?.choices?.[0]?.message?.content || '';
+    } catch (error: any) {
+      throw new Error(`Failed to generate guiding questions: ${error.response?.data?.error?.message || error.message}`);
     }
   }
 }
@@ -203,11 +308,13 @@ export class TTSService {
           },
           user: { uid: 'student_user' },
           audio: {
-            voice_type: 'BV001_streaming',
+            // Use a warm, storytelling style voice configuration for children
+            voice_type: voiceType || 'zh_female_xueayi_saturn_bigtts',
             encoding: 'mp3',
-            speed_ratio: 1.0,
+            // Slightly slower and a bit higher pitch to sound like storytelling
+          
             volume_ratio: 1.0,
-            pitch_ratio: 1.0
+            pitch_ratio: 1.05
           },
           request: {
             text: safeText,
@@ -249,7 +356,12 @@ export class TTSService {
       if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
         window.speechSynthesis.cancel();
         const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = 'zh-CN';
+        // Use English voice for storytelling
+        utterance.lang = 'en-US';
+        // Adjust browser TTS to sound more like a gentle storyteller
+        utterance.rate = 0.9;   // slightly slower
+        utterance.pitch = 1.05; // slightly higher, softer tone
+        utterance.volume = 1.0;
         utterance.onend = () => resolve('browser-tts');
         window.speechSynthesis.speak(utterance);
       } else {
