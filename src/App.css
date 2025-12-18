@@ -73,7 +73,7 @@
   gap: 20px;
   padding: 20px;
   padding-top: 16px;
-  overflow: visible;
+  overflow: hidden;
 }
 
 .left-panel {
@@ -221,54 +221,5 @@
 
 .video-progress {
   width: 100%;
-}
-
-/* 响应式设计 */
-@media (max-width: 1200px) {
-  .app-main {
-    flex-direction: column;
-    padding: 12px;
-  }
-
-  .right-panel {
-    width: 100%;
-    flex-direction: row;
-    box-shadow: none;
-  }
-
-  .story-section,
-  .chat-section {
-    flex: 1;
-  }
-
-  .left-panel {
-    box-shadow: none;
-  }
-}
-
-@media (max-width: 900px) {
-  .app-main {
-    flex-direction: column;
-    padding: 8px;
-    gap: 12px;
-  }
-
-  .left-panel,
-  .right-panel {
-    width: 100%;
-    border-radius: 12px;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.05);
-  }
-
-  .right-panel {
-    flex-direction: column;
-  }
-
-  .story-section,
-  .chat-section {
-    flex: none;
-    min-height: auto;
-    max-height: none;
-  }
 }
 
