@@ -31,10 +31,13 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
       const parent = canvasElement.parentElement;
 
       const parentWidth = parent ? parent.clientWidth - 16 : BASE_WIDTH;
+      const parentHeight = parent ? parent.clientHeight - 16 : BASE_HEIGHT;
       const maxWidth = BASE_WIDTH;
       const minWidth = 260;
       const targetWidth = Math.min(maxWidth, Math.max(minWidth, parentWidth));
-      const scale = targetWidth / BASE_WIDTH;
+      const scaleW = targetWidth / BASE_WIDTH;
+      const scaleH = parentHeight > 0 ? parentHeight / BASE_HEIGHT : scaleW;
+      const scale = Math.min(scaleW, scaleH);
       const targetHeight = BASE_HEIGHT * scale;
 
       let canvas: fabric.Canvas;
