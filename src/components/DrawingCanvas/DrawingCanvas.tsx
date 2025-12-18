@@ -1,5 +1,4 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { fabric } from 'fabric';
 import './DrawingCanvas.css';
 
 interface DrawingCanvasProps {
@@ -13,110 +12,95 @@ const DEFAULT_BRUSH_SIZE = 5;
 export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({ 
   onDrawingComplete
 }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const fabricCanvasRef = useRef<fabric.Canvas | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [selectedColor, setSelectedColor] = useState(DEFAULT_COLOR);
   const [brushSize, setBrushSize] = useState(DEFAULT_BRUSH_SIZE);
   const [isEraserMode, setIsEraserMode] = useState(false);
 
+  const isDrawingRef = useRef(false);
+  const lastPosRef = useRef<{ x: number; y: number } | null>(null);
+  const currentColorRef = useRef(DEFAULT_COLOR);
+  const currentBrushSizeRef = useRef(DEFAULT_BRUSH_SIZE);
+  const isEraserRef = useRef(false);
+
+  // Initialize canvas and pointer events ONCE
   useEffect(() => {
-    if (!canvasRef.current) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-    const BASE_ASPECT = 4 / 3; // width:height = 4:3
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
-    const initCanvas = () => {
-      const existing = fabricCanvasRef.current;
-      const canvasElement = canvasRef.current!;
-      const parent = canvasElement.parentElement;
+    // 固定一个稳定尺寸，优先保证能画
+    canvas.width = 800;
+    canvas.height = 500;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      const parentWidth = parent ? parent.clientWidth - 12 : 800;
-      const parentHeight = parent ? parent.clientHeight - 12 : 600;
-
-      // Try to make the drawable area fill as much of the wrapper as possible,
-      // while keeping a 4:3 aspect ratio and never exceeding parent size.
-      let targetWidth = parentWidth;
-      let targetHeight = targetWidth / BASE_ASPECT;
-
-      if (targetHeight > parentHeight) {
-        targetHeight = parentHeight;
-        targetWidth = targetHeight * BASE_ASPECT;
-      }
-
-      const minWidth = 260;
-      if (targetWidth < minWidth) {
-        targetWidth = minWidth;
-        targetHeight = targetWidth / BASE_ASPECT;
-      }
-
-      let canvas: fabric.Canvas;
-      if (existing) {
-        canvas = existing;
-        canvas.setWidth(targetWidth);
-        canvas.setHeight(targetHeight);
-        canvas.setZoom(1);
-        canvas.renderAll();
-      } else {
-        canvas = new fabric.Canvas(canvasElement, {
-          width: targetWidth,
-          height: targetHeight,
-          backgroundColor: '#ffffff',
-          isDrawingMode: true,
-        });
-        fabricCanvasRef.current = canvas;
-
-        // Initial brush setup
-        canvas.freeDrawingBrush.color = selectedColor;
-        canvas.freeDrawingBrush.width = brushSize;
-      }
+    const getPos = (e: PointerEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+      };
     };
 
-    initCanvas();
-
-    const handleResize = () => {
-      initCanvas();
+    const handlePointerDown = (e: PointerEvent) => {
+      e.preventDefault();
+      const pos = getPos(e);
+      isDrawingRef.current = true;
+      lastPosRef.current = pos;
     };
-    window.addEventListener('resize', handleResize);
+
+    const handlePointerMove = (e: PointerEvent) => {
+      if (!isDrawingRef.current || !lastPosRef.current) return;
+      e.preventDefault();
+      const pos = getPos(e);
+
+      ctx.strokeStyle = isEraserRef.current ? '#ffffff' : currentColorRef.current;
+      ctx.lineWidth = currentBrushSizeRef.current;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      ctx.beginPath();
+      ctx.moveTo(lastPosRef.current.x, lastPosRef.current.y);
+      ctx.lineTo(pos.x, pos.y);
+      ctx.stroke();
+
+      lastPosRef.current = pos;
+    };
+
+    const handlePointerUp = (e: PointerEvent) => {
+      e.preventDefault();
+      isDrawingRef.current = false;
+      lastPosRef.current = null;
+    };
+
+    canvas.addEventListener('pointerdown', handlePointerDown);
+    canvas.addEventListener('pointermove', handlePointerMove);
+    canvas.addEventListener('pointerup', handlePointerUp);
+    canvas.addEventListener('pointerleave', handlePointerUp);
 
     return () => {
-      window.removeEventListener('resize', handleResize);
-      if (fabricCanvasRef.current) {
-        fabricCanvasRef.current.dispose();
-        fabricCanvasRef.current = null;
-      }
+      canvas.removeEventListener('pointerdown', handlePointerDown);
+      canvas.removeEventListener('pointermove', handlePointerMove);
+      canvas.removeEventListener('pointerup', handlePointerUp);
+      canvas.removeEventListener('pointerleave', handlePointerUp);
     };
   }, []);
 
-  // Update brush settings
+  // Keep refs in sync with latest UI state (used by drawing handlers)
   useEffect(() => {
-    if (!fabricCanvasRef.current) return;
-    
-    if (isEraserMode) {
-      // Use EraserBrush for erasing
-      try {
-        // Check if EraserBrush is available
-        if (fabric.EraserBrush) {
-          fabricCanvasRef.current.freeDrawingBrush = new fabric.EraserBrush(fabricCanvasRef.current);
-          fabricCanvasRef.current.freeDrawingBrush.width = brushSize;
-        } else {
-          // If EraserBrush is not available, use background color brush to simulate erasing
-          fabricCanvasRef.current.freeDrawingBrush = new fabric.PencilBrush(fabricCanvasRef.current);
-          (fabricCanvasRef.current.freeDrawingBrush as fabric.PencilBrush).color = '#ffffff';
-          fabricCanvasRef.current.freeDrawingBrush.width = brushSize;
-        }
-      } catch (error) {
-        // Fallback: use white brush to simulate erasing
-        console.warn('EraserBrush not available, using white brush to simulate erasing', error);
-        fabricCanvasRef.current.freeDrawingBrush = new fabric.PencilBrush(fabricCanvasRef.current);
-        (fabricCanvasRef.current.freeDrawingBrush as fabric.PencilBrush).color = '#ffffff';
-        fabricCanvasRef.current.freeDrawingBrush.width = brushSize;
-      }
-    } else {
-      fabricCanvasRef.current.freeDrawingBrush = new fabric.PencilBrush(fabricCanvasRef.current);
-      fabricCanvasRef.current.freeDrawingBrush.color = selectedColor;
-      fabricCanvasRef.current.freeDrawingBrush.width = brushSize;
-    }
-    fabricCanvasRef.current.isDrawingMode = true;
-  }, [selectedColor, brushSize, isEraserMode]);
+    currentColorRef.current = selectedColor;
+  }, [selectedColor]);
+
+  useEffect(() => {
+    currentBrushSizeRef.current = brushSize;
+  }, [brushSize]);
+
+  useEffect(() => {
+    isEraserRef.current = isEraserMode;
+  }, [isEraserMode]);
 
   const handleColorSelect = (color: string) => {
     setSelectedColor(color);
@@ -132,17 +116,11 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   };
 
   const handleDone = useCallback(() => {
-    if (!fabricCanvasRef.current) return;
-    
-    // Convert canvas to Base64 image
-    const dataURL = fabricCanvasRef.current.toDataURL({
-      format: 'png',
-      quality: 1.0
-    });
-    
-    // Extract Base64 data (remove data:image/png;base64, prefix)
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const dataURL = canvas.toDataURL('image/png');
     const base64Data = dataURL.split(',')[1];
-    
     onDrawingComplete(base64Data);
   }, [onDrawingComplete]);
 
@@ -200,4 +178,5 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     </div>
   );
 };
+
 
