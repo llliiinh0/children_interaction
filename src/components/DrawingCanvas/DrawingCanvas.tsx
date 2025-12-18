@@ -4,8 +4,6 @@ import './DrawingCanvas.css';
 
 interface DrawingCanvasProps {
   onDrawingComplete: (canvasData: string) => void;
-  onDrawingUpdate?: (canvasData: string) => void;
-  hasExistingDrawing?: boolean;
 }
 
 const COLORS = ['#000000', '#FF0000', '#FFFF00', '#90EE90', '#006400', '#0000FF', '#800080'];
@@ -13,9 +11,7 @@ const DEFAULT_COLOR = COLORS[0];
 const DEFAULT_BRUSH_SIZE = 5;
 
 export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({ 
-  onDrawingComplete, 
-  onDrawingUpdate,
-  hasExistingDrawing = false 
+  onDrawingComplete
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fabricCanvasRef = useRef<fabric.Canvas | null>(null);
@@ -104,21 +100,6 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     onDrawingComplete(base64Data);
   }, [onDrawingComplete]);
 
-  const handleUpdate = useCallback(() => {
-    if (!fabricCanvasRef.current || !onDrawingUpdate) return;
-    
-    // Convert canvas to Base64 image
-    const dataURL = fabricCanvasRef.current.toDataURL({
-      format: 'png',
-      quality: 1.0
-    });
-    
-    // Extract Base64 data (remove data:image/png;base64, prefix)
-    const base64Data = dataURL.split(',')[1];
-    
-    onDrawingUpdate(base64Data);
-  }, [onDrawingUpdate]);
-
   return (
     <div className="drawing-canvas-container">
       <div className="canvas-header">
@@ -159,23 +140,15 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
             <span className="brush-size-value">{brushSize}</span>
           </label>
         </div>
-        
         <button
           className={`eraser-button ${isEraserMode ? 'active' : ''}`}
           onClick={handleEraserClick}
         >
           Eraser
         </button>
-        
-        {hasExistingDrawing && onDrawingUpdate && (
-          <button className="update-button" onClick={handleUpdate}>
-            <span className="star-icon">✨</span>
-            Update Drawing
-          </button>
-        )}
         <button className="done-button" onClick={handleDone}>
           <span className="star-icon">⭐</span>
-          {hasExistingDrawing ? 'Save Drawing' : "I'm Done!"}
+          {"I'm Done!"}
         </button>
       </div>
     </div>
