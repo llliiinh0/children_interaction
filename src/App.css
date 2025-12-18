@@ -95,10 +95,11 @@
   overflow: hidden;
 }
 
-/* Desktop: lock overall height to viewport, only inner panels scroll */
-@media (min-width: 900px) {
+/* Mobile: lock overall height to one screen, only Story/Chat scroll */
+@media (max-width: 900px) {
   .app-main {
     height: calc(100vh - 64px);
+    overflow: hidden;
   }
 
   .left-panel,
