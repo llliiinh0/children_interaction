@@ -36,11 +36,15 @@
   padding: 4px;
   margin-bottom: 10px;
   min-height: 0;
+  /* 关键：在手机端禁止浏览器把触摸事件当成滚动/拖拽，否则画画时页面会乱飞 */
+  touch-action: none;
 }
 
 .drawing-canvas {
   border-radius: 4px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  /* 再次确保画布本身不会触发滚动手势 */
+  touch-action: none;
 }
 
 .drawing-tools {
