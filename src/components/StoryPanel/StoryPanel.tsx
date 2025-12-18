@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Story } from '../../types';
 import { TTSService } from '../../services/api';
+import { AudioManager } from '../../services/audioManager';
 import './StoryPanel.css';
 
 interface StoryPanelProps {
@@ -48,28 +49,22 @@ export const StoryPanel: React.FC<StoryPanelProps> = ({
 
     try {
       setIsPlaying(true);
-      
-      // Call TTS service to generate speech
+
+      // Call TTS service to generate speech (prefer Doubao TTS; browser TTS only as fallback)
       const audioUrl = await TTSService.textToSpeech(story.content);
-      
-      // Play audio
-      if (audioRef.current) {
-        audioRef.current.pause();
-      }
-      
-      const audio = new Audio(audioUrl);
+
+      // Use global AudioManager so that starting this audio will stop any other playing audio
+      const audio = await AudioManager.playFromUrl(audioUrl);
       audioRef.current = audio;
-      
+
       audio.onended = () => {
         setIsPlaying(false);
       };
-      
+
       audio.onerror = () => {
         setIsPlaying(false);
         alert('Audio playback failed. Please check TTS API configuration.');
       };
-      
-      await audio.play();
     } catch (error) {
       console.error('Audio playback failed:', error);
       setIsPlaying(false);
@@ -78,18 +73,16 @@ export const StoryPanel: React.FC<StoryPanelProps> = ({
   };
 
   const handleStopAudio = () => {
+    AudioManager.stopAll();
     if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-      setIsPlaying(false);
+      audioRef.current = null;
     }
+    setIsPlaying(false);
   };
 
   useEffect(() => {
     return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-      }
+      AudioManager.stopAll();
     };
   }, []);
 
