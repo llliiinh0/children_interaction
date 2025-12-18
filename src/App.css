@@ -110,6 +110,40 @@
   flex-direction: column;
 }
 
+.orientation-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.orientation-card {
+  max-width: 420px;
+  width: 100%;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 20px 24px;
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.35);
+  text-align: center;
+}
+
+.orientation-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: #333;
+}
+
+.orientation-text {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #555;
+}
+
 /* Video modal */
 .video-modal-backdrop {
   position: fixed;
