@@ -47,48 +47,43 @@ function App() {
       };
 
       setStory(newStory);
-      setMessages(prev => [...prev, {
+
+      // Automatically add a user-style message indicating the child has finished the drawing
+      const finishedMessage: Message = {
         id: Date.now().toString(),
-        role: 'assistant',
-        content: 'Wow! Your drawing is beautiful! Let me create a story for you!',
+        role: 'user',
+        content: 'I have finished my drawing.',
         timestamp: new Date()
-      }]);
+      };
+
+      // Celebrate the drawing and story creation as assistant
+      const celebrationMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: 'Wow! Your drawing is beautiful! I have created a story from it!',
+        timestamp: new Date()
+      };
+
+      setMessages(prev => [...prev, finishedMessage, celebrationMessage]);
+
+      // Then, immediately ask guiding questions to spark creativity
+      try {
+        const guidingQuestions = await LLMService.generateGuidingQuestions(canvasData, storyContent);
+        setMessages(prev => [...prev, {
+          id: (Date.now() + 2).toString(),
+          role: 'assistant',
+          content: guidingQuestions,
+          timestamp: new Date()
+        }]);
+      } catch (error) {
+        console.error('Failed to generate guiding questions after drawing completion:', error);
+      }
     } catch (error) {
       console.error('Failed to generate story:', error);
     } finally {
       setIsGeneratingStory(false);
     }
   }, [story, messages]);
-
-  // --- Handle drawing update ---
-  const handleDrawingUpdate = useCallback(async (canvasData: string) => {
-    if (!currentDrawingData || !story) {
-      handleDrawingComplete(canvasData);
-      return;
-    }
-    setCurrentDrawingData(canvasData);
-    setIsGeneratingStory(true);
-
-    try {
-      const updatedStoryContent = await LLMService.updateStoryFromDrawing(
-        canvasData,
-        currentDrawingData,
-        story.content
-      );
-
-      setStory({ content: updatedStoryContent, lastModified: new Date() });
-      setMessages(prev => [...prev, {
-        id: Date.now().toString(),
-        role: 'system',
-        content: 'Drawing updated, and the story has evolved!',
-        timestamp: new Date()
-      }]);
-    } catch (error) {
-      console.error('Update failed:', error);
-    } finally {
-      setIsGeneratingStory(false);
-    }
-  }, [currentDrawingData, story, messages, handleDrawingComplete]);
 
   // --- Handle video generation ---
   const handleGenerateVideo = useCallback(async () => {
@@ -134,15 +129,58 @@ function App() {
     setMessages(prev => [...prev, userMessage]);
     setIsChatLoading(true);
 
+    // Detect if the child is explicitly telling StoryBuddy that the drawing is finished
+    const isDrawingCompletionMessage = (text: string) => {
+      const normalized = text.trim().toLowerCase();
+
+      const englishPatterns = [
+        'i have finished this drawing',
+        "i've finished this drawing",
+        'i finished my drawing',
+        "i'm done with this drawing",
+        "i'm done with the drawing",
+        'i am done with this drawing',
+        'i am done with the drawing',
+        'i finished drawing',
+        'i am done drawing',
+        "i'm done drawing"
+      ];
+
+      const chinesePatterns = [
+        '我已经完成这个画作了',
+        '我已经完成这个画作',
+        '我已经完成这幅画了',
+        '我已经完成这幅画',
+        '我已经画完了',
+        '我画完了',
+        '我画好了',
+        '我已经画好了',
+        '我已经完成画作了',
+        '我已经完成画画了'
+      ];
+
+      if (englishPatterns.some(p => normalized.includes(p))) return true;
+      if (chinesePatterns.some(p => text.includes(p))) return true;
+      return false;
+    };
+
+    const isDrawingCompleted = isDrawingCompletionMessage(message);
+
     try {
-      const response = await LLMService.chat(message, messages.map(m => ({ role: m.role, content: m.content })), story?.content);
+      const response = await LLMService.chat(
+        message,
+        messages.map(m => ({ role: m.role, content: m.content })),
+        story?.content,
+        currentDrawingData || undefined,
+        { isDrawingCompleted }
+      );
       setMessages(prev => [...prev, { id: Date.now().toString(), role: 'assistant', content: response, timestamp: new Date() }]);
     } catch (error) {
       console.error('Chat failed:', error);
     } finally {
       setIsChatLoading(false);
     }
-  }, [messages, story]);
+  }, [messages, story, currentDrawingData]);
 
   return (
     <div className="app">
@@ -151,8 +189,6 @@ function App() {
         <div className="left-panel">
           <DrawingCanvas 
             onDrawingComplete={handleDrawingComplete}
-            onDrawingUpdate={handleDrawingUpdate}
-            hasExistingDrawing={!!currentDrawingData}
           />
         </div>
 
