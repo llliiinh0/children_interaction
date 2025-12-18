@@ -35,6 +35,7 @@
   background: #fafafa;
   padding: 8px;
   margin-bottom: 16px;
+  min-height: 260px;
 }
 
 .drawing-canvas {
