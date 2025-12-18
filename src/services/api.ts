@@ -53,7 +53,10 @@ export class LLMService {
 
     try {
       const messages: any[] = [
-        { role: 'system', content: 'You are a creative story writing assistant, specializing in creating stories for children.' }
+        { 
+          role: 'system', 
+          content: 'You are a creative story writing assistant for children. Always respond with ONLY the story text, without any explanation or comments.' 
+        }
       ];
 
       if (chatHistory) {
@@ -64,8 +67,8 @@ export class LLMService {
       }
 
       const prompt = existingStory 
-        ? `Current story: ${existingStory}\nPlease update the story based on the new drawing.`
-        : 'Please create a vivid and interesting story based on this drawing.';
+        ? `Current story: ${existingStory}\nPlease update the story based on the new drawing. Do not explain the changes, just give the updated story text.`
+        : 'Please create a vivid and interesting story based on this drawing. Only output the story itself, no additional explanation.';
 
       messages.push({
         role: 'user',
@@ -120,11 +123,14 @@ export class LLMService {
   ): Promise<string> {
     try {
       const messages = [
-        { role: 'system', content: 'You are a story update assistant. Compare the changes between the two drawings and update the story accordingly.' },
+        { 
+          role: 'system', 
+          content: 'You are a story update assistant. Compare the changes between the two drawings and update the story accordingly. Only return the updated story text, without describing the changes.' 
+        },
         {
           role: 'user',
           content: [
-            { type: 'text', text: `Original story: ${currentStory}\nPlease update the story based on the changes in the following two images. The first is the old image, the second is the new image.` },
+            { type: 'text', text: `Original story: ${currentStory}\nPlease update the story based on the changes in the following two images. The first is the old image, the second is the new image. Do not explain what changed, only output the new version of the story.` },
             { type: 'image_url', image_url: { url: `data:image/png;base64,${previousImageBase64}` } },
             { type: 'image_url', image_url: { url: `data:image/png;base64,${newImageBase64}` } }
           ]
@@ -147,10 +153,13 @@ export class LLMService {
   ): Promise<string> {
     try {
       const messages: any[] = [
-        { role: 'system', content: 'Update the existing story based on new ideas mentioned in the conversation.' },
+        { 
+          role: 'system', 
+          content: 'Update the existing story based on new ideas mentioned in the conversation. Only output the updated story text, without any explanation.' 
+        },
         { 
           role: 'user', 
-          content: `Current story: ${currentStory}\nChat history: ${JSON.stringify(chatHistory.slice(-3))}\nPlease incorporate elements from the conversation into the story.` 
+          content: `Current story: ${currentStory}\nChat history: ${JSON.stringify(chatHistory.slice(-3))}\nPlease incorporate elements from the conversation into the story, and return only the updated story.` 
         }
       ];
 
@@ -244,10 +253,31 @@ export class TTSService {
 
 export class VideoService {
   /**
+   * 尝试从不同结构中提取视频 URL，方便兼容官方可能的返回格式差异
+   */
+  private static extractVideoUrl(data: any): string {
+    if (!data) return '';
+    // 当前火山引擎返回结构：data.content.video_url
+    if (data.content?.video_url) return data.content.video_url;
+
+    // 兼容其他可能的输出字段
+    if (data.output?.video_url) return data.output.video_url;
+    if (data.output?.video?.url) return data.output.video.url;
+    if (Array.isArray(data.output) && data.output.length > 0) {
+      const first = data.output[0];
+      if (typeof first === 'string') return first;
+      if (first.url) return first.url;
+      if (first.video_url) return first.video_url;
+    }
+    return '';
+  }
+
+  /**
    * 轮询查询任务状态
    */
   private static async pollTaskStatus(taskId: string): Promise<string> {
-    for (let i = 0; i < 60; i++) {
+    // 轮询次数从 60 提升到 120，每 5 秒一次，总等待时间约 10 分钟
+    for (let i = 0; i < 120; i++) {
       try {
         const res = await axios.get(
           // Note: path is contents/generations
@@ -259,20 +289,30 @@ export class VideoService {
         
         // Compatible with different response structures
         const data = res.data?.data || res.data;
-        
+
         if (data.status === 'succeeded') {
-          return data.output?.video_url || '';
+          console.log('[VideoService] Task succeeded, raw data:', data);
+          const url = this.extractVideoUrl(data);
+          if (!url) {
+            console.warn('[VideoService] Task succeeded but no video URL found in response.');
+          }
+          return url;
         }
         if (data.status === 'failed') {
+          console.error('[VideoService] Task failed, raw data:', data);
           throw new Error(data.error?.message || 'Video generation task failed');
         }
         
         console.log(`Video generating, status: ${data.status}...`);
         await new Promise(r => setTimeout(r, 5000)); // Poll every 5 seconds
       } catch (error: any) {
+        // 对于 404 或暂时的网络错误（如超时），继续轮询而不是立刻失败
         if (error.response?.status === 404) {
           console.warn("Task ID not yet active on server, continuing to wait...");
+        } else if (!error.response && (error.code === 'ETIMEDOUT' || error.code === 'ECONNRESET' || error.message?.includes('timeout'))) {
+          console.warn("[VideoService] Network timeout while polling, will retry...", error.code || error.message);
         } else {
+          console.error("[VideoService] Polling error (non-retryable):", error.response?.data || error.message);
           throw error;
         }
       }
@@ -286,11 +326,16 @@ export class VideoService {
   static async generateVideo(story: string, imageBase64?: string): Promise<string> {
     if (!API_CONFIG.ARK_VIDEO_API_KEY) throw new Error('Video API key not configured');
 
+    // 构造文案，并通过控制参数压缩视频时长，降低生成耗时
+    const baseStory = story.slice(0, 300); // 文本不要太长，避免过度复杂
+    const controlFlags = '--resolution 720p --duration 12 --camerafixed false --watermark true';
+
     // Construct content
     const content: any[] = [
       { 
         type: 'text', 
-        text: story.slice(0, 500) // Prompt should not be too long
+        // 在提示词后追加控制参数，控制分辨率和时长（约 10~15s）
+        text: `${baseStory}\n\n${controlFlags}`
       }
     ];
 
