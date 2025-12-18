@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { DrawingCanvas } from './components/DrawingCanvas/DrawingCanvas';
 import { StoryPanel } from './components/StoryPanel/StoryPanel';
 import { ChatPanel } from './components/ChatPanel/ChatPanel';
@@ -25,29 +25,6 @@ function App() {
   const [currentDrawingData, setCurrentDrawingData] = useState<string | null>(null);
   const [currentVideoUrl, setCurrentVideoUrl] = useState<string | null>(null);
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
-
-  // Detect mobile portrait mode and show an overlay asking user to rotate
-  const [isPortraitMobile, setIsPortraitMobile] = useState(false);
-
-  useEffect(() => {
-    const checkOrientation = () => {
-      if (typeof window === 'undefined') return;
-      const vw = window.innerWidth;
-      const vh = window.innerHeight;
-      const isMobile = Math.min(vw, vh) <= 900; // phones & small tablets
-      const isPortrait = vh > vw;
-      setIsPortraitMobile(isMobile && isPortrait);
-    };
-
-    checkOrientation();
-    window.addEventListener('resize', checkOrientation);
-    window.addEventListener('orientationchange', checkOrientation);
-
-    return () => {
-      window.removeEventListener('resize', checkOrientation);
-      window.removeEventListener('orientationchange', checkOrientation);
-    };
-  }, []);
 
   // --- Handle drawing completion ---
   const handleDrawingComplete = useCallback(async (canvasData: string) => {
@@ -207,17 +184,6 @@ function App() {
 
   return (
     <div className="app">
-      {isPortraitMobile && (
-        <div className="orientation-overlay">
-          <div className="orientation-card">
-            <div className="orientation-title">Please rotate your device</div>
-            <div className="orientation-text">
-              For the best experience with the drawing canvas and StoryBuddy,
-              please use this app in <strong>landscape mode</strong>. Turn your phone or tablet sideways.
-            </div>
-          </div>
-        </div>
-      )}
       {import.meta.env.DEV && <EnvChecker />}
       <main className="app-main">
         <div className="left-panel">
