@@ -3,7 +3,7 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: #ffffff;
+  background: #f5f5f5;
 }
 
 .app-header {
@@ -72,8 +72,7 @@
   display: flex;
   gap: 16px;
   padding: 12px 16px 20px;
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 .left-panel {
@@ -94,20 +93,6 @@
   border-radius: 12px;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.05);
   overflow: hidden;
-}
-
-/* Mobile / tablet landscape: keep layout fixed to viewport height,
-   let only inner panels scroll to avoid stretching the whole page */
-@media (max-width: 900px) {
-  .app-main {
-    height: calc(100vh - 56px);
-    overflow: hidden;
-  }
-
-  .left-panel,
-  .right-panel {
-    height: 100%;
-  }
 }
 
 .story-section {
