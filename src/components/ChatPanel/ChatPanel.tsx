@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Message } from '../../types';
 import { TTSService } from '../../services/api';
+import { AudioManager } from '../../services/audioManager';
 import './ChatPanel.css';
 
 interface ChatPanelProps {
@@ -44,30 +45,21 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
     if (message.role !== 'assistant' || !message.content) return;
 
     try {
-      // Stop currently playing audio
-      audioRefs.current.forEach((audio) => {
-        if (audio && !audio.paused) {
-          audio.pause();
-        }
-      });
-
       // Call TTS service to generate speech
       const audioUrl = await TTSService.textToSpeech(message.content);
-      
-      // Play audio
-      const audio = new Audio(audioUrl);
+
+      // Use global AudioManager so that starting this audio will stop any other playing audio
+      const audio = await AudioManager.playFromUrl(audioUrl);
       audioRefs.current.set(message.id, audio);
-      
+
       audio.onended = () => {
         audioRefs.current.delete(message.id);
       };
-      
+
       audio.onerror = () => {
         audioRefs.current.delete(message.id);
         alert('Audio playback failed. Please check TTS API configuration.');
       };
-      
-      await audio.play();
     } catch (error) {
       console.error('Audio playback failed:', error);
       alert('Audio playback failed. Please check TTS API configuration.');
@@ -82,11 +74,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
   useEffect(() => {
     return () => {
       // Clean up all audio
-      audioRefs.current.forEach((audio) => {
-        if (audio) {
-          audio.pause();
-        }
-      });
+      AudioManager.stopAll();
       audioRefs.current.clear();
     };
   }, []);
