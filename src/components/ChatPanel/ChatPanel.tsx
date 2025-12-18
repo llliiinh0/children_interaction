@@ -66,11 +66,6 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
     }
   };
 
-  const handleVoiceInput = () => {
-    // TODO: Implement voice input feature
-    alert('Voice input feature requires speech recognition API configuration.');
-  };
-
   useEffect(() => {
     return () => {
       // Clean up all audio
@@ -124,13 +119,6 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
       </div>
       
       <div className="chat-input-container">
-        <button
-          className="voice-input-button"
-          onClick={handleVoiceInput}
-          title="Voice Input"
-        >
-          🎤
-        </button>
         <input
           type="text"
           className="chat-input"
