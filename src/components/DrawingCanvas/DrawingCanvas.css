@@ -3,18 +3,18 @@
   flex-direction: column;
   height: 100%;
   background: white;
-  border: 2px solid #90EE90;
-  border-radius: 8px;
-  padding: 16px;
+  border: 1px solid #90EE90;
+  border-radius: 10px;
+  padding: 12px;
 }
 
 .canvas-header {
-  margin-bottom: 16px;
+  margin-bottom: 10px;
 }
 
 .canvas-header h2 {
-  font-size: 20px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 500;
   color: #333;
   display: flex;
   align-items: center;
@@ -30,12 +30,12 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  border: 1px solid #90EE90;
-  border-radius: 4px;
+  border: 1px solid #e0f6e0;
+  border-radius: 6px;
   background: #fafafa;
   padding: 8px;
-  margin-bottom: 16px;
-  min-height: 260px;
+  margin-bottom: 12px;
+  min-height: 280px;
 }
 
 .drawing-canvas {
@@ -46,8 +46,8 @@
 .drawing-tools {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 12px;
+  gap: 12px;
+  padding: 8px 10px;
   background: #f9f9f9;
   border-radius: 8px;
 }
