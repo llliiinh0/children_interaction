@@ -242,11 +242,15 @@ export class TTSService {
 
   private static fallbackTTS(text: string): Promise<string> {
     return new Promise((resolve) => {
-      speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'zh-CN';
-      utterance.onend = () => resolve('browser-tts');
-      speechSynthesis.speak(utterance);
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'zh-CN';
+        utterance.onend = () => resolve('browser-tts');
+        window.speechSynthesis.speak(utterance);
+      } else {
+        resolve('browser-tts');
+      }
     });
   }
 }
